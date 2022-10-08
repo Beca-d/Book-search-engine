@@ -17,13 +17,17 @@ const resolvers = {
     },
 
     Mutation: {
-        addUser: async (parent, { username, email, password }) => {
-            const user = await User.create({ username, email, password });
-            const token = signToken(user);
-
-            return { token, profile };
+        addUser: async (parent, args) => {
+            try {
+                const user = await User.create(args);
+        
+                const token = signToken(user);
+                return { token, user };
+            }
+            catch (err) {
+                console.log(err);
+            }
         },
-
         login: async (parent, { email, password }) => {
             const user = await User.findOne({ email });
 
@@ -41,29 +45,32 @@ const resolvers = {
             return { token, user };
         },
 
-        saveBook: async (parent, { userId, book }, context) => {
+        saveBook: async (parent, args, context) => {
             if (context.user) {
-            return User.findOneAndUpdate(
-                { _id: userId },
-                {
-                $addToSet: { savedbooks: book },
-                },
-                {
-                new: true,
-                runValidators: true,
-                }
-            );
+                const updatedUser = await User.findOneAndUpdate(
+                    { _id: context.user._Id },
+                    {
+                    $addToSet: { savedbooks: args.input },
+                    },
+                    {
+                    new: true,
+                    runValidators: true,
+                    }
+                );
+
+                return updatedUser;   
             }
             throw new AuthenticationError('You need to log in');
         },
         
-        removeBook: async (parent, { book }, context) => {
+        removeBook: async (parent, args, context) => {
             if (context.user) {
-            return User.findOneAndUpdate(
+                const updatedUser = await User.findOneAndUpdate(
                 { _id: context.user._id },
-                { $pull: { savedbooks: book } },
+                { $pull: { savedbooks: { bookId: args.bookId }}},
                 { new: true }
             );
+            return updatedUser;
             }
             throw new AuthenticationError('You need to log in');
         },
